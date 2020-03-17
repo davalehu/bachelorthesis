@@ -1,0 +1,9 @@
+
+Summary Statistics Soybean Farming Suitability Index
+==========================================
+Statistic    N  Mean  St. Dev.  Min   Max 
+------------------------------------------
+Total Sample 51 42.90  20.35   0.00  80.41
+Argentina    24 39.13  27.27   0.00  80.41
+Brazil       27 46.25  10.68   30.79 66.41
+------------------------------------------
