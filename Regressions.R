@@ -32,6 +32,7 @@ Elections
 
 ####################### Prepare Data ###############################
 
+# Multiply by 100 to get easier readable percentage format.
 Elections$incvote <- Elections$incvote * 100
 Elections$p_change <- Elections$p_change * 100
 
@@ -40,224 +41,259 @@ Elections$p_change <- Elections$p_change * 100
 Elections <- mutate(Elections, first_diff = incvote-incvote_last)
 Elections <- mutate(Elections, incvote_growth = first_diff / incvote_last)
 
-####################### Simple Re-Election Model 3.1.3 ###############################
+####################### Static Re-Election Model 3.1.3 ###############################
 
 ####################### OLS ###############################
 
-#OLS Model no Fixed Effects
-OLS <- lm(inc_elect ~ p_average + suitability + p_average*suitability, data = Elections)
-summary(OLS)
 #Comment: OLS is not well equipped for dichotomous dpendent variables
 
+#OLS Model no Fixed Effects
+SEOLS <- lm(inc_elect ~ p_average + suitability + p_average*suitability, data = Elections)
+summary(SEOLS)
+
 #OLS Model with district Fixed Effects
-OLSFD <- lm(inc_elect ~ p_average + suitability + p_average*suitability + 
+SEOLSFD <- lm(inc_elect ~ p_average + suitability + p_average*suitability + 
               factor(district_nr)-1, data = Elections)
-summary(OLSFD)
-#Is Suitability the reason for the collinearity?  
+summary(SEOLSFD)
 
 #OLS Model with all Fixed Effects
-OLSF <- lm(inc_elect ~ p_average + suitability + p_average*suitability +
+SEOLSF <- lm(inc_elect ~ p_average + suitability + p_average*suitability +
              factor(district_nr)-1 + factor(year), data = Elections)
-summary(OLSF)
+summary(SEOLSF)
 #Do I need to interact (year-1)*(district_nr -1) to get time effects for each province? (See model Hodler wrote down)
 
 ####################### Logit ###############################
 
 #Logit Model district fixed effects
-LogitFD <- glm(inc_elect ~ p_average + suitability + p_average*suitability +
+SELogitFD <- glm(inc_elect ~ p_average + suitability + p_average*suitability +
             factor(district_nr) -1, data = Elections, family = binomial)
-summary(LogitFD)
+summary(SELogitFD)
 #p_average is significant
 
 #Fixed effects logit model
-LogitF <- glm(inc_elect ~ p_average + suitability + p_average*suitability +
-                 factor(district_nr)-1 + factor(year)-1, data = Elections, family = binomial)
-summary(LogitF)
+SELogitF <- glm(inc_elect ~ p_average + suitability + p_average*suitability +
+                 factor(district_nr)-1 + factor(year), data = Elections, family = binomial, maxit=100)
+summary(SELogitF)
+#The 73 Fisher Scoring Iterations show that the Model is not very easy to fit. 
 
+#Country specific: 
+SELogitFA <- glm(inc_elect ~ p_average + suitability + p_average*suitability +
+                  factor(district_nr)-1 + factor(year), 
+                 data = subset(Elections, country == "Argentina"), family = binomial, maxit=100)
+summary(SELogitFA)
 
+SELogitFB <- glm(inc_elect ~ p_average + suitability + p_average*suitability +
+                   factor(district_nr)-1 + factor(year),
+                 data = subset(Elections, country == "Brazil"), family = binomial, maxit=100)
+summary(SELogitFB)
 
-####################### PLM ###############################
-PooledSM <- plm(inc_elect ~ p_average + suitability + p_average*suitability,
-                            index = c("district_nr", "year"), model = "pooling", data = Elections)
-summary(PooledSM)
-#This is the same as a very normal OLS
+####################### Stargazer Output ###############################
 
-#Panel Model Within
-WithinSM <- plm(inc_elect ~ p_average + suitability + p_average*suitability,
-             index = c("district_nr", "year"), model = "within", effect = "twoway", data = Elections)
-summary(WithinSM)
-
-#Panel Model Random 
-RandomSM <- plm(inc_elect ~ p_average + suitability + p_average*suitability,
-               index = c("district_nr", "year"), model = "random", effect = "twoway", data = Elections)
-summary(RandomSM)
-
-
-#Include Fixed Effects?
-
-pFtest(WithinSM, OLS) 
-
-#Yes! Include fixed effects because the p-value is below 0.05. See https://www.princeton.edu/~otorres/Panel101R.pdf
-
-#Hausmann Test
-
-phtest(WithinSM, RandomSM)
-
-#Breusch Pagan Test
-
-plmtest(PooledSM, type="bp")
+stargazer(SELogitF, SELogitFA, SELogitFB, 
+          type = "latex",
+          title = "Equation 3.13",
+          align = TRUE,
+          omit = c("district_nr", "year"),
+          omit.stat=c("adj.rsq","ser", "aic", "ll"),
+          digits = 2)
+#Stargazer cannot display scientific results, therefore the tabe has lots of zeros. Anyway its not really worth
+#displaying the table anyway as the results are null. 
 
 ####################### Dynamic Re-Election Model 3.3.1 ###############################
 
 ####################### OLS ###############################
 
 #OLS Model no Fixed Effects
-OLS <- lm(inc_elect ~ p_change + suitability + p_change*suitability, data = Elections)
-summary(OLS)
+DEOLS <- lm(inc_elect ~ p_change + suitability + p_change*suitability, data = Elections)
+summary(DEOLS)
 #Comment: OLS is not well equipped for dichotomous dpendent variables
 
 #OLS Model with district Fixed Effects
-OLSFD <- lm(inc_elect ~ p_change + suitability + p_change*suitability + 
+DEOLSFD <- lm(inc_elect ~ p_change + suitability + p_change*suitability + 
               factor(district_nr)-1, data = Elections)
-summary(OLSFD)
-#Is Suitability the reason for the collinearity?  
+summary(DEOLSFD)
 
 #OLS Model with all Fixed Effects
-OLSF <- lm(inc_elect ~ p_change + suitability + p_change*suitability +
+DEOLSF <- lm(inc_elect ~ p_change + suitability + p_change*suitability +
              factor(district_nr)-1 + factor(year), data = Elections)
-summary(OLSF)
+summary(DEOLSF)
 #Do I need to interact (year-1)*(district_nr -1) to get time effects for each province? (See model Hodler wrote down)
 
 ####################### Logit ###############################
 
 #Logit Model district fixed effects
-LogitFD <- glm(inc_elect ~ p_change + suitability + p_change*suitability +
+DELogitFD <- glm(inc_elect ~ p_change + suitability + p_change*suitability +
                  factor(district_nr) -1, data = Elections, family = binomial)
-summary(LogitFD)
+summary(DELogitFD)
 
 
 #Fixed effects logit model
-LogitF <- glm(inc_elect ~ p_change + suitability + p_change*suitability +
+DELogitF <- glm(inc_elect ~ p_change + suitability + p_change*suitability +
                 factor(district_nr)-1 + factor(year)-1, data = Elections, family = binomial)
-summary(LogitF)
+summary(DELogitF)
+
+#Country specific: 
+DELogitFA <- glm(inc_elect ~ p_change + suitability + p_change*suitability +
+                   factor(district_nr)-1 + factor(year), 
+                 data = subset(Elections, country == "Argentina"), family = binomial, maxit=100)
+summary(DELogitFA)
+
+DELogitFB <- glm(inc_elect ~ p_change + suitability + p_change*suitability +
+                   factor(district_nr)-1 + factor(year),
+                 data = subset(Elections, country == "Brazil"), family = binomial, maxit=100)
+summary(DELogitFB)
+
+####################### Stargazer Output ###############################
+
+stargazer(DELogitF, DELogitFA, DELogitFB, 
+          type = "latex",
+          title = "Equation 3.3.1",
+          align = TRUE,
+          omit = c("district_nr", "year"),
+          omit.stat=c("adj.rsq","ser", "aic", "ll"),
+          digits = 2)
+#Stargazer cannot display scientific results, therefore the tabe has lots of zeros. Anyway its not really worth
+#displaying the table anyway as the results are null. 
 
 
-
-####################### PLM ###############################
-PooledSM <- plm(inc_elect ~ p_change + suitability + p_change*suitability,
-                index = c("district_nr", "year"), model = "pooling", data = Elections)
-summary(PooledSM)
-#This is the same as a very normal OLS
-
-#Panel Model Within
-WithinSM <- plm(inc_elect ~ p_change + suitability + p_change*suitability,
-                index = c("district_nr", "year"), model = "within", effect = "twoway", data = Elections)
-summary(WithinSM)
-
-#Panel Model Random 
-RandomSM <- plm(inc_elect ~ p_change + suitability + p_change*suitability,
-                index = c("district_nr", "year"), model = "random", effect = "twoway", data = Elections)
-summary(RandomSM)
-
-
-####################### Simple Vote Share Model 3.2.1 ###############################
+####################### Static Vote Share Model 3.2.1 ###############################
 
 ####################### OLS ###############################
 
 #OLS Model no Fixed Effects
-OLS <- lm(incvote ~ p_average + suitability + p_average*suitability, data = Elections)
-summary(OLS)
+SVOLS <- lm(incvote ~ p_average + suitability + p_average*suitability, data = Elections)
+summary(SVOLS)
 
 #OLS Model with district Fixed Effects
-OLSFD <- lm(incvote ~ p_average + suitability + p_average*suitability + 
+SVOLSFD <- lm(incvote ~ p_average + suitability + p_average*suitability + 
               factor(district_nr)-1, data = Elections)
-summary(OLSFD)
+summary(SVOLSFD)
 #Is Suitability the reason for the collinearity?  
 
 #OLS Model with all Fixed Effects
-OLSF <- lm(incvote ~ p_average + suitability + p_average*suitability +
+SVOLSF <- lm(incvote ~ p_average + suitability + p_average*suitability +
              factor(district_nr)-1 + factor(year), data = Elections)
-summary(OLSF)
-#Do I need to interact (year-1)*(district_nr -1) to get time effects for each province? (See model Hodler wrote down)
+summary(SVOLSF)
 
 ####################### PLM ###############################
-PooledSM <- plm(incvote ~ p_average + suitability + p_average*suitability,
+#Pooled Model == SVOLS
+PooledSV <- plm(incvote ~ p_average + suitability + p_average*suitability,
                 index = c("district_nr", "year"), model = "pooling", data = Elections)
-summary(PooledSM)
-#This is the same as a very normal OLS
+summary(PooledSV)
 
-#Panel Model Within
-WithinSM <- plm(incvote ~ p_average + suitability + p_average*suitability,
+#Panel Model Within == SVOLSF
+WithinSV <- plm(incvote ~ p_average + suitability + p_average*suitability,
                 index = c("district_nr", "year"), model = "within", effect = "twoway", data = Elections)
-summary(WithinSM)
+summary(WithinSV)
 
 #Panel Model Random 
-RandomSM <- plm(incvote ~ p_average + suitability + p_average*suitability,
+RandomSV <- plm(incvote ~ p_average + suitability + p_average*suitability,
                 index = c("district_nr", "year"), model = "random", effect = "twoway", data = Elections)
-summary(RandomSM)
+summary(RandomSV)
 
+# Country Specific - The Within Models are equivalent to the lm models, but I prefer the LM Models because I see all coefficients
+
+WithinSVA <- plm(incvote ~ p_average + suitability + p_average*suitability,
+                index = c("district_nr", "year"), model = "within", effect = "twoway", 
+                data = subset(Elections, country == "Argentina"))
+summary(WithinSVA)
+
+WithinSVA <- plm(incvote ~ p_average + suitability + p_average*suitability,
+                 index = c("district_nr", "year"), model = "within", effect = "twoway", 
+                 data = subset(Elections, country == "Brazil"))
+summary(WithinSVA)
+
+SVOLSFA <- lm(incvote ~ p_average + suitability + p_average*suitability +
+               factor(district_nr)-1 + factor(year), data = subset(Elections, country == "Argentina"))
+summary(SVOLSFA)
+
+SVOLSFB <- lm(incvote ~ p_average + suitability + p_average*suitability +
+                factor(district_nr)-1 + factor(year), data = subset(Elections, country == "Brazil"))
+summary(SVOLSFB)
+
+####################### Stargazer Output ###############################
+
+stargazer(SVOLSF, SVOLSFA, SVOLSFB, 
+          type = "latex",
+          title = "Equation 3.2.1",
+          align = TRUE,
+          omit = c("district_nr", "year"),
+          omit.stat=c("adj.rsq","ser", "aic", "ll"),
+          digits = 2)
+ 
 ####################### Dynamic Vote Share Model 3.3.2 ###############################
 
 ####################### OLS ###############################
 
 #OLS Model no Fixed Effects
-OLS <- lm(incvote ~ p_change + suitability + p_change*suitability, data = Elections)
-summary(OLS)
+DVOLS <- lm(incvote ~ p_change + suitability + p_change*suitability, data = Elections)
+summary(DVOLS)
 
 #OLS Model with district Fixed Effects
-OLSFD <- lm(incvote ~ p_change + suitability + p_change*suitability + 
+DVOLSFD <- lm(incvote ~ p_change + suitability + p_change*suitability + 
               factor(district_nr)-1, data = Elections)
-summary(OLSFD)
+summary(DVOLSFD)
 #Is Suitability the reason for the collinearity?  
 
 #OLS Model with all Fixed Effects
-OLSF <- lm(incvote ~ p_change + suitability + p_change*suitability +
+DVOLSF <- lm(incvote ~ p_change + suitability + p_change*suitability +
              factor(district_nr)-1 + factor(year), data = Elections)
-summary(OLSF)
+summary(DVOLSF)
 #Do I need to interact (year-1)*(district_nr -1) to get time effects for each province? (See model Hodler wrote down)
 
-stargazer(OLSF, 
+####################### Country Specific ###############################
+
+DVOLSFA <- lm(incvote ~ p_change + suitability + p_change*suitability +
+               factor(district_nr)-1 + factor(year), data = subset(Elections, country == "Argentina"))
+summary(DVOLSFA)
+
+DVOLSFB <- lm(incvote ~ p_change + suitability + p_change*suitability +
+                factor(district_nr)-1 + factor(year), data = subset(Elections, country == "Brazil"))
+summary(DVOLSFB)
+
+
+####################### Stargazer Output ###############################
+
+stargazer(DVOLSF, DVOLSFA, DVOLSFB,
+          column.labels = c("Total Sample", "Argentina", "Brazil"),
           type = "latex",
-          title = "My Final Results?",
+          title = "Equation 3.3.2",
           align = TRUE,
-          omit = c("district_nr", "year"))
-          
-####################### PLM ###############################
-PooledSM <- plm(incvote ~ p_change + suitability + p_change*suitability,
-                index = c("district_nr", "year"), model = "pooling", data = Elections)
-summary(PooledSM)
-#This is the same as a very normal OLS
+          omit = c("district_nr", "year"),
+          omit.stat=c("adj.rsq","ser", "aic", "ll","f"),
+          digits = 2)
 
-#Panel Model Within
-WithinSM <- plm(incvote ~ p_change + suitability + p_change*suitability,
-                index = c("district_nr", "year"), model = "within", effect = "twoway", data = Elections)
-summary(WithinSM)
-
-#Panel Model Random 
-RandomSM <- plm(incvote ~ p_change + suitability + p_change*suitability,
-                index = c("district_nr", "year"), model = "random", effect = "twoway", data = Elections)
-summary(RandomSM)
-
-####################### Incvote Growth ###############################
-OLSFD <- lm(incvote_growth ~ p_change + suitability + p_change*suitability + 
+####################### Incvote Growth - P Change ###############################
+DGOLSFD <- lm(incvote_growth ~ p_change + suitability + p_change*suitability + 
               factor(district_nr)-1, data = Elections)
-summary(OLSFD)
-#Is Suitability the reason for the collinearity?  
+summary(DGOLSFD)
 
 #OLS Model with all Fixed Effects
-OLSF <- lm(incvote_growth ~ p_change + suitability + p_change*suitability +
+DGOLSF <- lm(incvote_growth ~ p_change + suitability + p_change*suitability +
              factor(district_nr)-1 + factor(year), data = Elections)
-summary(OLSF)
+summary(DGOLSF)
 
 ####################### Country subsets ###############################
 
 #OLS Model with all Fixed Effects
-OLSF <- lm(incvote_growth ~ p_change + suitability + p_change*suitability +
+DGOLSFA <- lm(incvote_growth ~ p_change + suitability + p_change*suitability +
              factor(district_nr)-1 + factor(year), data = subset(Elections, country == "Argentina"))
-summary(OLSF)
+summary(DGOLSFA)
 
-OLSF <- lm(incvote_growth ~ p_change + suitability + p_change*suitability +
+DGOLSFB <- lm(incvote_growth ~ p_change + suitability + p_change*suitability +
              factor(district_nr)-1 + factor(year), data = subset(Elections, country == "Brazil"))
-summary(OLSF)
+summary(DGOLSFB)
 
-#There is some significant effects of incvote_growth in the subsets, but in the over the whole set
+####################### Stargazer Output ###############################
+
+stargazer(DGOLSF, DGOLSFA, DGOLSFB,
+          column.labels = c("Total Sample", "Argentina", "Brazil"),
+          add.lines = list(c("Fixed effects?", "Yes", "Yes", "Yes")),
+          model.numbers = FALSE,
+          type = "latex",
+          title = "Equation 3.3.2",
+          align = TRUE,
+          omit = c("district_nr", "year"),
+          omit.stat=c("adj.rsq","ser", "aic", "ll","f"),
+          digits = 2)
+
