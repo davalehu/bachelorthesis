@@ -260,4 +260,4 @@ OLSF <- lm(incvote_growth ~ p_change + suitability + p_change*suitability +
              factor(district_nr)-1 + factor(year), data = subset(Elections, country == "Brazil"))
 summary(OLSF)
 
-#There is some significant effects of incvote_growth in the subsets, but in the over the whole set. 
+#There is some significant effects of incvote_growth in the subsets, but in the over the whole set
